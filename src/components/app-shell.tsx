@@ -9,6 +9,8 @@ import { roleLabel } from "@/lib/utils";
 import { Avatar, ToastStack } from "@/components/ui";
 import { Icon, type IconName } from "@/components/icons";
 
+const SIDEBAR_KEY = "asmiee-os-sidebar-collapsed";
+
 const items: { href: string; label: string; icon: IconName; permission?: Parameters<typeof can>[1] }[] = [
   { href: "/dashboard", label: "Dashboard", icon: "dashboard" },
   { href: "/clients", label: "Clients", icon: "clients" },
@@ -30,6 +32,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(SIDEBAR_KEY);
+    setSidebarCollapsed(stored === "true");
+  }, []);
+
+  useEffect(() => {
+    window.localStorage.setItem(SIDEBAR_KEY, String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   useEffect(() => {
     if (!hydrated) return;
@@ -50,21 +62,56 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const segment = pathname.split("/").filter(Boolean)[0] ?? "dashboard";
   const pageTitle = labels[segment] ?? "Asmiee OS";
 
-  return <div className="app-layout">
-    <aside className={`sidebar ${mobileOpen ? "sidebar-open" : ""}`}>
-      <div className="sidebar-brand"><div className="brand-mark">A</div><div><strong>ASMIEE</strong><span>OPERATING SYSTEM</span></div><button className="mobile-close" onClick={() => setMobileOpen(false)}>×</button></div>
+  return <div className={`app-layout ${sidebarCollapsed ? "sidebar-collapsed" : ""}`}>
+    <aside className={`sidebar ${sidebarCollapsed && !mobileOpen ? "is-collapsed" : ""} ${mobileOpen ? "sidebar-open" : ""}`}>
+      <button
+        className="sidebar-toggle"
+        type="button"
+        onClick={() => setSidebarCollapsed((value) => !value)}
+        aria-label={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+        title={sidebarCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+      >
+        <Icon name={sidebarCollapsed ? "chevronRight" : "chevronLeft"} size={16}/>
+      </button>
+
+      <div className="sidebar-brand">
+        <div className="brand-mark">A</div>
+        <div className="sidebar-brand-copy"><strong>ASMIEE</strong><span>OPERATING SYSTEM</span></div>
+        <button className="mobile-close" onClick={() => setMobileOpen(false)}>×</button>
+      </div>
+
       <nav className="nav-list" aria-label="Main navigation">
         <div className="nav-label">Workspace</div>
         {visibleItems.map((item) => {
           const active = pathname === item.href || (item.href !== "/dashboard" && pathname.startsWith(`${item.href}/`));
-          return <Link key={item.href} href={item.href} className={`nav-item ${active ? "active" : ""}`} onClick={() => setMobileOpen(false)}><Icon name={item.icon}/><span>{item.label}</span>{item.href === "/approvals" && state.approvals.filter((a) => ["Awaiting Response", "Viewed", "Changes Requested", "Resubmitted"].includes(a.status)).length > 0 && <span className="nav-count">{state.approvals.filter((a) => ["Awaiting Response", "Viewed", "Changes Requested", "Resubmitted"].includes(a.status)).length}</span>}</Link>;
+          const pendingApprovals = state.approvals.filter((a) => ["Awaiting Response", "Viewed", "Changes Requested", "Resubmitted"].includes(a.status)).length;
+          return <Link
+            key={item.href}
+            href={item.href}
+            className={`nav-item ${active ? "active" : ""}`}
+            onClick={() => setMobileOpen(false)}
+            title={sidebarCollapsed ? item.label : undefined}
+          >
+            <Icon name={item.icon}/>
+            <span className="nav-item-label">{item.label}</span>
+            {item.href === "/approvals" && pendingApprovals > 0 && <span className="nav-count">{pendingApprovals}</span>}
+          </Link>;
         })}
       </nav>
+
       <div className="sidebar-bottom">
-        <div className="demo-panel"><span>Demo workspace</span><button onClick={resetDemo}><Icon name="reset" size={15}/> Reset data</button></div>
-        <div className="user-card"><Avatar label={currentUser.avatar}/><div className="user-meta"><strong>{currentUser.name}</strong><span>{roleLabel(currentUser.role)}</span></div><button className="icon-button dark" onClick={() => { logout(); router.replace("/login"); }} aria-label="Log out"><Icon name="logout" size={17}/></button></div>
+        <div className="demo-panel">
+          <span>Demo workspace</span>
+          <button onClick={resetDemo} title={sidebarCollapsed ? "Reset demo data" : undefined}><Icon name="reset" size={15}/><span className="demo-reset-label">Reset data</span></button>
+        </div>
+        <div className="user-card">
+          <Avatar label={currentUser.avatar}/>
+          <div className="user-meta"><strong>{currentUser.name}</strong><span>{roleLabel(currentUser.role)}</span></div>
+          <button className="icon-button dark" onClick={() => { logout(); router.replace("/login"); }} aria-label="Log out" title="Log out"><Icon name="logout" size={17}/></button>
+        </div>
       </div>
     </aside>
+
     {mobileOpen && <button className="sidebar-overlay" aria-label="Close menu" onClick={() => setMobileOpen(false)} />}
 
     <main className="main-area">

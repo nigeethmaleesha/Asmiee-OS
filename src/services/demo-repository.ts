@@ -1,8 +1,8 @@
 import { initialState } from "@/data/mock";
 import type { AppState } from "@/types";
 
-const STORAGE_KEY = "asmiee-os-phase1-state-v1";
-const USER_KEY = "asmiee-os-phase1-user";
+const STORAGE_KEY = "asmiee-os-phase1-state-v2";
+const USER_KEY = "asmiee-os-phase1-user-v2";
 
 export const demoRepository = {
   async load(): Promise<AppState> {
